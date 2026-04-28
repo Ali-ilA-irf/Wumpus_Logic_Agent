@@ -162,8 +162,10 @@ export function useWumpusGame(initialRows = INIT_ROWS, initialCols = INIT_COLS) 
   }, []);
 
   /**
-   * AI Decision Loop: Find a provably safe neighbor and move to it.
-   * If none exists, mark as stuck.
+   * AI Decision Loop:
+   * 1. Try to find a provably safe neighbor and move to it.
+   * 2. If none exist but unvisited neighbors remain → pick first unvisited (exploration)
+   * 3. If no unvisited neighbors remain → mark as stuck.
    */
   const agentStep = useCallback(() => {
     setState(prev => {
@@ -183,11 +185,10 @@ export function useWumpusGame(initialRows = INIT_ROWS, initialCols = INIT_COLS) 
 
       if (unvisited.length === 0) {
         // No unvisited neighbors → stuck
-        setState(s => ({
-          ...s,
+        return {
+          ...prev,
           gameStatus: 'stuck',
-        }));
-        return prev;
+        };
       }
 
       // Find first provably safe neighbor
@@ -197,8 +198,6 @@ export function useWumpusGame(initialRows = INIT_ROWS, initialCols = INIT_COLS) 
 
         if (noPit && noWmp) {
           // Found safe neighbor → move to it
-          // We can't directly call moveAgent here, so return state that will trigger moveAgent
-          // Instead, we'll let the component handle this
           return {
             ...prev,
             nextAgentStep: { row: nr, col: nc },
@@ -206,18 +205,16 @@ export function useWumpusGame(initialRows = INIT_ROWS, initialCols = INIT_COLS) 
         }
       }
 
-      // No provably safe neighbor found → stuck
-      setState(s => ({
-        ...s,
-        gameStatus: 'stuck',
-      }));
-      return prev;
+      // No provably safe neighbor found, but unvisited remain → explore first unvisited
+      return {
+        ...prev,
+        nextAgentStep: { row: unvisited[0][0], col: unvisited[0][1] },
+      };
     });
 
-    // If agentStep found a safe move, trigger it
+    // Trigger the move if one was selected
     if (state.nextAgentStep) {
       moveAgent(state.nextAgentStep.row, state.nextAgentStep.col);
-      setState(s => ({ ...s, nextAgentStep: null }));
     }
   }, [state, moveAgent]);
 
