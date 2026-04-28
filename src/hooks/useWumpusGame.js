@@ -53,6 +53,25 @@ function buildInitialState(rows, cols, isWinnable = false) {
 
 /**
  * Get neighbors of (row, col) within grid bounds.
+ * Returns in priority order: Down, Left, Right, Up
+ */
+function getNeighborsPrioritized(row, col, rows, cols) {
+  // Priority order: Down (1), Left (2), Right (3), Up (4)
+  const allNeighbors = [
+    { pos: [row + 1, col], priority: 1, dir: 'Down' },   // Down
+    { pos: [row, col - 1], priority: 2, dir: 'Left' },   // Left
+    { pos: [row, col + 1], priority: 3, dir: 'Right' },  // Right
+    { pos: [row - 1, col], priority: 4, dir: 'Up' },     // Up
+  ];
+  
+  return allNeighbors
+    .filter(({ pos: [nr, nc] }) => nr >= 0 && nr < rows && nc >= 0 && nc < cols)
+    .sort((a, b) => a.priority - b.priority)
+    .map(({ pos }) => pos);
+}
+
+/**
+ * Get neighbors of (row, col) within grid bounds.
  */
 function getNeighbors(row, col, rows, cols) {
   return [
@@ -164,6 +183,8 @@ export function useWumpusGame(initialRows = INIT_ROWS, initialCols = INIT_COLS) 
   /**
    * AI Decision Loop: Find a provably safe neighbor and move to it.
    * If none exists, mark as stuck.
+   * 
+   * Priority order: Down → Left → Right → Up
    */
   const agentStep = useCallback(() => {
     setState(prev => {
@@ -174,12 +195,11 @@ export function useWumpusGame(initialRows = INIT_ROWS, initialCols = INIT_COLS) 
 
       const { row, col } = agentPos;
 
-      // Get unvisited neighbors
-      const neighbors = getNeighbors(row, col, rows, cols);
-      const unvisited = neighbors
-        .filter(([nr, nc]) => !prev.grid[nr][nc].visited)
-        // Shuffle the unvisited neighbors to remove the Up/Down movement bias
-        .sort(() => Math.random() - 0.5);
+      // Get unvisited neighbors in priority order: Down, Left, Right, Up
+      const allNeighbors = getNeighborsPrioritized(row, col, rows, cols);
+      const unvisited = allNeighbors.filter(
+        ([nr, nc]) => !prev.grid[nr][nc].visited
+      );
 
       if (unvisited.length === 0) {
         // No unvisited neighbors → stuck
@@ -189,7 +209,7 @@ export function useWumpusGame(initialRows = INIT_ROWS, initialCols = INIT_COLS) 
         };
       }
 
-      // Find first provably safe neighbor
+      // Find first provably safe neighbor (in priority order)
       for (const [nr, nc] of unvisited) {
         const noPit = ask(neg(pitLit(nr, nc)), kb);
         const noWmp = ask(neg(wumpusLit(nr, nc)), kb);
