@@ -162,10 +162,8 @@ export function useWumpusGame(initialRows = INIT_ROWS, initialCols = INIT_COLS) 
   }, []);
 
   /**
-   * AI Decision Loop:
-   * 1. Try to find a provably safe neighbor and move to it.
-   * 2. If none exist but unvisited neighbors remain → pick first unvisited (exploration)
-   * 3. If no unvisited neighbors remain → mark as stuck.
+   * AI Decision Loop: Find a provably safe neighbor and move to it.
+   * If none exists, mark as stuck.
    */
   const agentStep = useCallback(() => {
     setState(prev => {
@@ -205,10 +203,10 @@ export function useWumpusGame(initialRows = INIT_ROWS, initialCols = INIT_COLS) 
         }
       }
 
-      // No provably safe neighbor found, but unvisited remain → explore first unvisited
+      // No provably safe neighbor found → stuck
       return {
         ...prev,
-        nextAgentStep: { row: unvisited[0][0], col: unvisited[0][1] },
+        gameStatus: 'stuck',
       };
     });
 
