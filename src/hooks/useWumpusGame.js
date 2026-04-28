@@ -176,7 +176,10 @@ export function useWumpusGame(initialRows = INIT_ROWS, initialCols = INIT_COLS) 
 
       // Get unvisited neighbors
       const neighbors = getNeighbors(row, col, rows, cols);
-      const unvisited = neighbors.filter(([nr, nc]) => !prev.grid[nr][nc].visited);
+      const unvisited = neighbors
+        .filter(([nr, nc]) => !prev.grid[nr][nc].visited)
+        // Shuffle the unvisited neighbors to remove the Up/Down movement bias
+        .sort(() => Math.random() - 0.5);
 
       if (unvisited.length === 0) {
         // No unvisited neighbors → stuck
