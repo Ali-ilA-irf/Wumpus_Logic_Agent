@@ -12,7 +12,7 @@
  * Supports both dark and light themes via prefers-color-scheme.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const PERCEPT_ICONS = {
   breeze:  { icon: '~', label: 'Breeze',  color: 'var(--neon-cyan)'   },
@@ -56,7 +56,7 @@ function getCellState(cell, isAgent) {
   return 'cell-safe';
 }
 
-function Cell({ cell, isAgent, debugMode, hue, rows, cols }) {
+function Cell({ cell, isAgent, debugMode, hue, rows, cols, isRevisit }) {
   const isStart  = cell.row === 0 && cell.col === 0;
   const revealed = cell.visited;
   const state = getCellState(cell, isAgent);
@@ -64,6 +64,8 @@ function Cell({ cell, isAgent, debugMode, hue, rows, cols }) {
   // Build class string
   let classes = `wumpus-cell ${state}`;
   if (isStart && !isAgent) classes += ' cell-start';
+  if (isAgent) classes += ' cell-agent-active';
+  if (isRevisit && !isAgent && revealed) classes += ' cell-revisit';
 
   // Percept icons shown if cell is visited
   const perceptIcons = revealed
@@ -145,6 +147,23 @@ function Cell({ cell, isAgent, debugMode, hue, rows, cols }) {
 
 export default function GridRenderer({ grid, agentPos, config }) {
   const [debugMode, setDebugMode] = useState(false);
+  const [prevAgentPos, setPrevAgentPos] = useState(agentPos);
+  const [revisitingCell, setRevisitingCell] = useState(null);
+
+  // Track when agent moves to a previously visited cell
+  useEffect(() => {
+    if (prevAgentPos.row !== agentPos.row || prevAgentPos.col !== agentPos.col) {
+      // Agent moved
+      const targetCell = grid[agentPos.row][agentPos.col];
+      if (targetCell && targetCell.visited && !(agentPos.row === 0 && agentPos.col === 0)) {
+        // Moved to already visited cell (and it's not the start)
+        setRevisitingCell({ row: agentPos.row, col: agentPos.col });
+        // Clear revisit animation after 800ms
+        setTimeout(() => setRevisitingCell(null), 800);
+      }
+      setPrevAgentPos(agentPos);
+    }
+  }, [agentPos, grid, prevAgentPos]);
 
   if (!grid || grid.length === 0) return null;
 
@@ -219,6 +238,7 @@ export default function GridRenderer({ grid, agentPos, config }) {
                 hue={getCellHue(r, c, rows, cols)}
                 rows={rows}
                 cols={cols}
+                isRevisit={revisitingCell?.row === r && revisitingCell?.col === c}
               />
             ))
           )}
